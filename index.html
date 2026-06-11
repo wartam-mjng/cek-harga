@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koperasi Mandiri - Kalkulator Bahan Seragam</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-card {
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-slate-800 antialiased">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-40 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-600 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/20">
+                        <i class="fa-solid fa-calculator text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-slate-900 leading-none">CEK HARGA</h1>
+                        <p class="text-xs text-slate-500 mt-1 font-semibold">Sistem hitung cepat harga seragam</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- SISI KIRI: INPUT FORM -->
+            <div class="lg:col-span-7 space-y-6 no-print">
+                
+                <!-- Pengaturan Standar -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                    <!-- GENDER SELECTION (PILIH JENIS KELAMIN) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Pilih Jenis Kelamin</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-gender-laki" onclick="setGender('laki')" class="flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200">
+                                <i class="fa-solid fa-mars text-lg"></i>
+                                <span>Laki-Laki</span>
+                            </button>
+                            <button id="btn-gender-perempuan" onclick="setGender('perempuan')" class="flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200">
+                                <i class="fa-solid fa-venus text-lg"></i>
+                                <span>Perempuan</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daftar Bahan / Item -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-shirt text-brand-600"></i>
+                            <h2 class="font-bold text-slate-900">Pilih Bahan dan Ukuran</h2>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="selectAll(true)" class="text-xs font-bold text-brand-600 hover:text-brand-700 bg-brand-50 px-2 py-1 rounded">Pilih Semua</button>
+                            <button onclick="selectAll(false)" class="text-xs font-bold text-slate-500 hover:text-slate-600 bg-slate-100 px-2 py-1 rounded">Reset</button>
+                        </div>
+                    </div>
+
+                    <div id="items-container" class="space-y-3">
+                        <!-- Items dynamically injected by JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SISI KANAN: RINGKASAN NOTA / RECEIPT -->
+            <div class="lg:col-span-5">
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-md sticky top-24 overflow-hidden print-card">
+                    
+                    <!-- Dekorasi Nota -->
+                    <div class="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-6 text-white relative">
+                        <div class="absolute right-4 top-4 opacity-10">
+                            <i class="fa-solid fa-file-invoice-dollar text-8xl"></i>
+                        </div>
+                        <h3 class="font-extrabold text-lg tracking-wide">KOPERASI MANDIRI</h3>
+                        <p class="text-xs text-brand-100">Kwitansi Pemesanan Bahan Seragam</p>
+                    </div>
+
+                    <!-- Detail Nota -->
+                    <div class="p-6 space-y-6">
+                        <!-- Kop Surat & Identitas -->
+                        <div class="flex justify-between items-start text-xs border-b border-slate-100 pb-4">
+                            <div>
+                                <p class="font-semibold text-slate-500" id="receipt-tanggal">Tanggal: -</p>
+                            </div>
+                        </div>
+
+                        <!-- Daftar Kain yang dibeli -->
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Item Pembelian</p>
+                            <div id="receipt-items-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                                <!-- Dinamis dari Javascript -->
+                                <p class="text-sm text-slate-400 italic py-4 text-center">Belum ada bahan terpilih.</p>
+                            </div>
+                        </div>
+
+                        <!-- Kalkulasi Finansial -->
+                        <div class="border-t border-dashed border-slate-200 pt-4 space-y-2">
+                            <div class="flex justify-between items-center text-lg font-extrabold text-slate-900 border-t border-slate-100 pt-3">
+                                <span>Total Tagihan</span>
+                                <span id="r-total" class="text-brand-600">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <!-- Tombol Aksi -->
+                        <div class="grid grid-cols-1 gap-3 no-print">
+                            <button onclick="window.print()" class="flex items-center justify-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl transition duration-200">
+                                <i class="fa-solid fa-print"></i>
+                                <span>Cetak Nota</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-100 mt-16 py-8 no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p class="text-xs text-slate-400 font-semibold">&copy; 2026 Koperasi Mandiri Modern. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- SCRIPT UTAMA JAVASCRIPT -->
+    <script>
+        // Database data sesuai ralat harga terbaru
+        const dbBahan = [
+            { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5 },
+            { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
+            { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5 },
+            { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75 },
+            { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
+            { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5 },
+            { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25 }
+        ];
+
+        // State Aplikasi
+        let currentGender = 'laki'; // Default 'laki'
+        let selectedItems = {}; // Menyimpan state centang dan ukuran custom
+        
+        // Inisialisasi awal
+        window.onload = function() {
+            // Set tanggal hari ini pada nota
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('receipt-tanggal').innerText = `Tanggal: ${new Date().toLocaleDateString('id-ID', options)}`;
+            
+            // Generate List Item di DOM
+            renderItems();
+        };
+
+        // Render Item-item Bahan ke UI
+        function renderItems() {
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+
+            dbBahan.forEach((item, index) => {
+                // Tentukan panjang standar berdasarkan gender saat ini
+                const defaultLen = currentGender === 'laki' ? item.stdLaki : item.stdPerempuan;
+                
+                // Set default state jika belum didefinisikan
+                if (selectedItems[item.id] === undefined) {
+                    selectedItems[item.id] = {
+                        checked: false,
+                        length: defaultLen
+                    };
+                } else {
+                    // Update ukuran mengikuti standar gender jika user tidak mengedit manual
+                    if (!selectedItems[item.id].isCustom) {
+                        selectedItems[item.id].length = defaultLen;
+                    }
+                }
+
+                const card = document.createElement('div');
+                // Beri efek border khusus jika dicentang
+                const isChecked = selectedItems[item.id].checked;
+                card.className = `p-4 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isChecked ? 'border-brand-500 bg-brand-50/20' : 'border-slate-100 hover:bg-slate-50'}`;
+                
+                card.innerHTML = `
+                    <div class="flex items-start space-x-3 flex-1">
+                        <div class="pt-1">
+                            <input type="checkbox" id="check-${item.id}" ${isChecked ? 'checked' : ''} onchange="toggleItem('${item.id}', this.checked)" class="w-5 h-5 rounded text-brand-600 border-slate-300 focus:ring-brand-500 cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="check-${item.id}" class="font-bold text-slate-800 text-sm md:text-base cursor-pointer hover:text-brand-600 transition-colors">${item.nama}</label>
+                            <p class="text-xs text-slate-400 font-semibold">Rp ${formatRupiah(item.hargaPerM)} / meter</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3 self-end md:self-auto">
+                        <div class="flex flex-col items-end">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Ukuran (m)</span>
+                            <div class="flex items-center space-x-1 mt-1">
+                                <button onclick="adjustLength('${item.id}', -0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">-</button>
+                                <input type="number" id="len-${item.id}" step="0.05" min="0.1" value="${selectedItems[item.id].length}" oninput="manualLength('${item.id}', this.value)" class="w-16 text-center font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                <button onclick="adjustLength('${item.id}', 0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">+</button>
+                            </div>
+                        </div>
+                        <div class="text-right min-w-[90px]">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
+                            <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
+                                Rp ${formatRupiah(Math.round(selectedItems[item.id].length * item.hargaPerM))}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            calculateTotal();
+        }
+
+        // Event ubah Gender
+        function setGender(gender) {
+            currentGender = gender;
+            
+            // Update Tampilan tombol
+            const btnLaki = document.getElementById('btn-gender-laki');
+            const btnPerem = document.getElementById('btn-gender-perempuan');
+            
+            if(gender === 'laki') {
+                btnLaki.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
+                btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
+            } else {
+                btnLaki.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
+                btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
+            }
+
+            // Reset custom flags karena standar berubah
+            for (let id in selectedItems) {
+                selectedItems[id].isCustom = false;
+            }
+
+            // Render ulang item agar nilai standar baru diterapkan
+            renderItems();
+        }
+
+        // Centang / hapus centang item
+        function toggleItem(id, isChecked) {
+            selectedItems[id].checked = isChecked;
+            renderItems();
+        }
+
+        // Sesuaikan ukuran dengan tombol tambah / kurang
+        function adjustLength(id, amount) {
+            let curVal = parseFloat(selectedItems[id].length) || 0;
+            let newVal = Math.max(0.1, curVal + amount);
+            selectedItems[id].length = newVal;
+            selectedItems[id].isCustom = true; // Tandai bahwa user memodifikasi ukuran secara manual
+            
+            // Centang otomatis jika diubah ukurannya
+            selectedItems[id].checked = true;
+            
+            renderItems();
+        }
+
+        // Input ukuran manual via keyboard
+        function manualLength(id, value) {
+            let val = parseFloat(value) || 0;
+            selectedItems[id].length = val;
+            selectedItems[id].isCustom = true;
+            
+            // Centang otomatis
+            if (val > 0) {
+                selectedItems[id].checked = true;
+            }
+            
+            // Kalkulasi subtotal instan untuk baris tersebut
+            const item = dbBahan.find(i => i.id === id);
+            document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(Math.round(val * item.hargaPerM))}`;
+            
+            calculateTotal();
+        }
+
+        // Pilih Semua atau Reset Semua item
+        function selectAll(bool) {
+            for (let id in selectedItems) {
+                selectedItems[id].checked = bool;
+            }
+            renderItems();
+        }
+
+        // Kalkulasi Total Finansial
+        function calculateTotal() {
+            let subtotal = 0;
+            const receiptItemsList = document.getElementById('receipt-items-list');
+            receiptItemsList.innerHTML = '';
+
+            let hasItems = false;
+
+            dbBahan.forEach(item => {
+                const state = selectedItems[item.id];
+                if (state && state.checked) {
+                    hasItems = true;
+                    const price = Math.round(state.length * item.hargaPerM);
+                    subtotal += price;
+
+                    // Tambah ke list item receipt
+                    const rRow = document.createElement('div');
+                    rRow.className = "flex justify-between text-xs";
+                    rRow.innerHTML = `
+                        <div>
+                            <p class="font-bold text-slate-800">${item.nama}</p>
+                            <p class="text-[10px] text-slate-400 font-semibold">${state.length}m x Rp ${formatRupiah(item.hargaPerM)}</p>
+                        </div>
+                        <span class="font-bold text-slate-700">Rp ${formatRupiah(price)}</span>
+                    `;
+                    receiptItemsList.appendChild(rRow);
+                }
+            });
+
+            if (!hasItems) {
+                receiptItemsList.innerHTML = '<p class="text-sm text-slate-400 italic py-4 text-center">Belum ada bahan terpilih.</p>';
+            }
+
+            // Update UI Ringkasan Nota (Hanya Total Tagihan)
+            document.getElementById('r-total').innerText = `Rp ${formatRupiah(subtotal)}`;
+        }
+
+        // Fungsi Helper Format Rupiah
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka);
+        }
+    </script>
+</body>
+</html>
