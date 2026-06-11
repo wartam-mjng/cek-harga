@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koperasi Mandiri - Kalkulator Bahan Seragam</title>
+    <title>MANDIRI-SMART - Kalkulator & Sinkronisasi Bahan Seragam</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js Library untuk konversi PDF berkualitas tinggi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +49,19 @@
                 border: none !important;
                 background: white !important;
                 width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
+            body {
+                background: white !important;
+            }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 </head>
@@ -62,9 +76,14 @@
                         <i class="fa-solid fa-calculator text-lg"></i>
                     </div>
                     <div>
-                        <h1 class="font-extrabold text-slate-900 leading-none">CEK HARGA</h1>
-                        <p class="text-xs text-slate-500 mt-1 font-semibold">Sistem hitung cepat harga seragam</p>
+                        <h1 class="font-extrabold text-slate-900 leading-none">MANDIRI-SMART</h1>
+                        <p class="text-xs text-slate-500 mt-1 font-semibold">Sistem Kasir dari Bahan Seragam</p>
                     </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="sync-status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <i class="fa-solid fa-sync fa-spin mr-1.5"></i> Menghubungkan Google Sheets...
+                    </span>
                 </div>
             </div>
         </div>
@@ -73,95 +92,175 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            <!-- SISI KIRI: INPUT FORM -->
+            <!-- SISI KIRI: INPUT FORM, CARI & DAFTAR BAHAN -->
             <div class="lg:col-span-7 space-y-6 no-print">
                 
-                <!-- Pengaturan Standar -->
+                <!-- 1. Form Pencarian Google Sheets -->
                 <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-                    <!-- GENDER SELECTION (PILIH JENIS KELAMIN) -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Pilih Jenis Kelamin</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button id="btn-gender-laki" onclick="setGender('laki')" class="flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200">
-                                <i class="fa-solid fa-mars text-lg"></i>
-                                <span>Laki-Laki</span>
+                    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+                        <i class="fa-solid fa-magnifying-glass text-brand-600 text-lg"></i>
+                        <h2 class="font-bold text-slate-900">Pencarian Data Database Murid</h2>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Cari berdasarkan Nama atau No. Pendaftaran</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <input type="text" id="student-search-input" oninput="searchStudent(this.value)" placeholder="Ketik nama atau nomor pendaftaran murid..." class="block w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-semibold">
+                            <button id="clear-search-btn" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-500 hidden">
+                                <i class="fa-solid fa-circle-xmark"></i>
                             </button>
-                            <button id="btn-gender-perempuan" onclick="setGender('perempuan')" class="flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200">
-                                <i class="fa-solid fa-venus text-lg"></i>
-                                <span>Perempuan</span>
-                            </button>
+                        </div>
+
+                        <!-- Dropdown Hasil Pencarian -->
+                        <div id="search-results-dropdown" class="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl border border-slate-150 shadow-xl max-h-60 overflow-y-auto hidden no-scrollbar">
+                            <!-- Hasil diinjeksi lewat JS -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Daftar Bahan / Item -->
+                <!-- 2. Form Identitas Murid Mandiri -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-address-card text-brand-600 text-lg"></i>
+                            <h2 class="font-bold text-slate-900">Form Identitas Murid</h2>
+                        </div>
+                        <button onclick="resetFormSiswa()" class="text-xs font-semibold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1 rounded-lg transition">
+                            <i class="fa-solid fa-arrows-rotate mr-1"></i> Reset Form
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Nama Murid</label>
+                            <input type="text" id="form-nama" oninput="updateStudentDetails()" placeholder="Nama lengkap murid..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Nomor Pendaftaran</label>
+                            <input type="text" id="form-noreg" oninput="updateStudentDetails()" placeholder="Contoh: REG-001..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Kelas</label>
+                            <input type="text" id="form-kelas" oninput="updateStudentDetails()" placeholder="Contoh: VII A..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Asal Sekolah</label>
+                            <input type="text" id="form-sekolah" oninput="updateStudentDetails()" placeholder="Asal sekolah..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Jenis Kelamin (Acuan Ukuran)</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="btn-gender-laki" onclick="setGender('laki')" class="flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200">
+                                    <i class="fa-solid fa-mars"></i>
+                                    <span>Laki-Laki</span>
+                                </button>
+                                <button id="btn-gender-perempuan" onclick="setGender('perempuan')" class="flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200">
+                                    <i class="fa-solid fa-venus"></i>
+                                    <span>Perempuan</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Daftar Bahan / Item Kain & Atribut -->
                 <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-shirt text-brand-600"></i>
-                            <h2 class="font-bold text-slate-900">Pilih Bahan dan Ukuran</h2>
+                            <h2 class="font-bold text-slate-900">Pilih Bahan, Atribut dan Ukuran</h2>
                         </div>
                         <div class="flex space-x-2">
-                            <button onclick="selectAll(true)" class="text-xs font-bold text-brand-600 hover:text-brand-700 bg-brand-50 px-2 py-1 rounded">Pilih Semua</button>
-                            <button onclick="selectAll(false)" class="text-xs font-bold text-slate-500 hover:text-slate-600 bg-slate-100 px-2 py-1 rounded">Reset</button>
+                            <button onclick="selectAll(true)" class="text-xs font-bold text-brand-600 hover:text-brand-700 bg-brand-50 px-2.5 py-1 rounded">Pilih Semua</button>
+                            <button onclick="selectAll(false)" class="text-xs font-bold text-slate-500 hover:text-slate-600 bg-slate-100 px-2.5 py-1 rounded">Reset</button>
                         </div>
                     </div>
 
                     <div id="items-container" class="space-y-3">
-                        <!-- Items dynamically injected by JavaScript -->
+                        <!-- Item kain & atribut dirender secara dinamis lewat JS -->
                     </div>
                 </div>
 
             </div>
 
             <!-- SISI KANAN: RINGKASAN NOTA / RECEIPT -->
-            <div class="lg:col-span-5">
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-md sticky top-24 overflow-hidden print-card">
+            <div class="lg:col-span-5 space-y-4">
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-md overflow-hidden print-card" id="receipt-container">
                     
-                    <!-- Dekorasi Nota -->
+                    <!-- Desain Header Nota -->
                     <div class="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-6 text-white relative">
                         <div class="absolute right-4 top-4 opacity-10">
                             <i class="fa-solid fa-file-invoice-dollar text-8xl"></i>
                         </div>
-                        <h3 class="font-extrabold text-lg tracking-wide">KOPERASI MANDIRI</h3>
+                        <h3 class="font-extrabold text-lg tracking-wide text-white">KOPERASI MANDIRI</h3>
                         <p class="text-xs text-brand-100">Kwitansi Pemesanan Bahan Seragam</p>
                     </div>
 
-                    <!-- Detail Nota -->
+                    <!-- Detail Data Nota -->
                     <div class="p-6 space-y-6">
-                        <!-- Kop Surat & Identitas -->
+                        <!-- Informasi Tanggal & Kasir -->
                         <div class="flex justify-between items-start text-xs border-b border-slate-100 pb-4">
                             <div>
                                 <p class="font-semibold text-slate-500" id="receipt-tanggal">Tanggal: -</p>
+                                <p class="font-semibold text-slate-500 mt-1" id="receipt-petugas">Kasir: Petugas Koperasi</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded uppercase tracking-wider text-[10px]" id="receipt-nota-id">No Nota: SM-...</span>
                             </div>
                         </div>
 
-                        <!-- Daftar Kain yang dibeli -->
+                        <!-- Data Identitas Murid Penerima Manfaat -->
+                        <div id="receipt-student-section" class="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5 text-xs">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Penerima Manfaat / Murid</p>
+                            <div class="grid grid-cols-12 gap-1 text-slate-700">
+                                <span class="col-span-4 font-semibold text-slate-500">Nama Murid</span>
+                                <span class="col-span-8 font-bold text-slate-900" id="r-student-name">: -</span>
+
+                                <span class="col-span-4 font-semibold text-slate-500">No. Daftar</span>
+                                <span class="col-span-8 font-bold text-slate-900" id="r-student-reg">: -</span>
+
+                                <span class="col-span-4 font-semibold text-slate-500">Kelas</span>
+                                <span class="col-span-8 font-bold text-slate-900" id="r-student-class">: -</span>
+
+                                <span class="col-span-4 font-semibold text-slate-500">Asal Sekolah</span>
+                                <span class="col-span-8 font-bold text-slate-900 truncate" id="r-student-school">: -</span>
+
+                                <span class="col-span-4 font-semibold text-slate-500">Jenis Kelamin</span>
+                                <span class="col-span-8 font-bold text-slate-900" id="r-student-gender">: Laki-Laki</span>
+                            </div>
+                        </div>
+
+                        <!-- Daftar Kain Pembelian -->
                         <div>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Item Pembelian</p>
                             <div id="receipt-items-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
-                                <!-- Dinamis dari Javascript -->
                                 <p class="text-sm text-slate-400 italic py-4 text-center">Belum ada bahan terpilih.</p>
                             </div>
                         </div>
 
-                        <!-- Kalkulasi Finansial -->
-                        <div class="border-t border-dashed border-slate-200 pt-4 space-y-2">
-                            <div class="flex justify-between items-center text-lg font-extrabold text-slate-900 border-t border-slate-100 pt-3">
+                        <!-- Hitung Total Tagihan -->
+                        <div class="border-t border-dashed border-slate-200 pt-4">
+                            <div class="flex justify-between items-center text-lg font-extrabold text-slate-900 pt-2">
                                 <span>Total Tagihan</span>
                                 <span id="r-total" class="text-brand-600">Rp 0</span>
                             </div>
                         </div>
-
-                        <!-- Tombol Aksi -->
-                        <div class="grid grid-cols-1 gap-3 no-print">
-                            <button onclick="window.print()" class="flex items-center justify-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl transition duration-200">
-                                <i class="fa-solid fa-print"></i>
-                                <span>Cetak Nota</span>
-                            </button>
-                        </div>
                     </div>
+                </div>
 
+                <!-- Tombol Cetak Dokumen -->
+                <div class="grid grid-cols-2 gap-3 no-print">
+                    <button onclick="downloadPDF()" class="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md shadow-emerald-500/10">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Unduh PDF</span>
+                    </button>
+                    <button onclick="window.print()" class="flex items-center justify-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md shadow-brand-500/10">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Cetak Nota</span>
+                    </button>
                 </div>
             </div>
 
@@ -175,60 +274,343 @@
         </div>
     </footer>
 
+    <!-- CONTAINER TERSEMBUNYI UNTUK PRE-RENDER PDF AGAR TIDAK KOSONG -->
+    <div id="pdf-render-area" style="position: absolute; top: 0; left: 0; width: 680px; height: 1px; overflow: hidden; opacity: 0.01; pointer-events: none;" class="no-print">
+        <!-- Struktur kuitansi klon akan disuntikkan ke sini secara instan sebelum diekspor -->
+    </div>
+
     <!-- SCRIPT UTAMA JAVASCRIPT -->
     <script>
-        // Database data sesuai ralat harga terbaru
+        // Database Bahan Seragam Koperasi beserta default standart meter / set (RALAT HARGA BARU TERAPKAN)
         const dbBahan = [
-            { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
-            { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75 },
-            { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
-            { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25 }
+            { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5, unit: 'm' },
+            { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, unit: 'm' },
+            { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5, unit: 'm' },
+            { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75, unit: 'm' },
+            { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, unit: 'm' },
+            { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5, unit: 'm' },
+            { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25, unit: 'm' },
+            // Atribut ditaruh setelah rok/celana pramuka. Unit default: 'set'
+            { id: 'atribut', nama: 'Atribut', hargaPerM: 150000, stdLaki: 1.0, stdPerempuan: 1.0, unit: 'set' }
         ];
 
+        // URL Data Google Spreadsheet Baru (Publis sebagai CSV)
+        const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSD_51QtTe_iXNWo6QijpFrv29HH0YwphcQ8O1cwwZbjlqE_d5yXMdgaUoaoYpSfaHn8yzPxjwAVedW/pub?output=csv";
+
         // State Aplikasi
-        let currentGender = 'laki'; // Default 'laki'
-        let selectedItems = {}; // Menyimpan state centang dan ukuran custom
-        
+        let dbSiswa = []; 
+        let currentGender = 'laki'; 
+        let selectedItems = {}; 
+        let selectedStudent = null; 
+
         // Inisialisasi awal
         window.onload = function() {
-            // Set tanggal hari ini pada nota
+            // Set tanggal & ID Nota Hari Ini
             const options = { year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('receipt-tanggal').innerText = `Tanggal: ${new Date().toLocaleDateString('id-ID', options)}`;
+            document.getElementById('receipt-nota-id').innerText = `No Nota: SM-${Date.now().toString().slice(-6)}`;
             
-            // Generate List Item di DOM
+            // Set data inisial di form murid
+            updateStudentDetails();
+
+            // Generate List Item awal di DOM
             renderItems();
+
+            // Ambil data murid dari Google Sheets
+            fetchStudentData();
+
+            // Menutup dropdown pencarian jika mengklik di luar area
+            document.addEventListener('click', function(e) {
+                const dropdown = document.getElementById('search-results-dropdown');
+                const searchInput = document.getElementById('student-search-input');
+                if (e.target !== searchInput && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
         };
+
+        // Mengambil Data CSV dari Google Sheets dan Mem-parsing secara Manual
+        async function fetchStudentData() {
+            const statusEl = document.getElementById('sync-status');
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('Gagal mengambil data dari Google Sheets');
+                
+                const csvText = await response.text();
+                parseCSV(csvText);
+
+                statusEl.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800";
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1.5"></i> Terhubung (${dbSiswa.length} Murid)`;
+            } catch (error) {
+                console.error(error);
+                statusEl.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800";
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1.5"></i> Hubungan Offline`;
+            }
+        }
+
+        // Helper untuk parse desimal Indonesia (koma) atau Internasional (titik)
+        function parseSizeValue(val) {
+            if (!val || val.trim() === "" || val.trim() === "0") return 0;
+            let cleanVal = val.replace(',', '.').trim();
+            let parsed = parseFloat(cleanVal);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        // Parsing satu baris CSV dengan standard aman RFC 4180
+        function splitCSVLine(text) {
+            let result = [];
+            let insideQuote = false;
+            let entry = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (char === '"') {
+                    insideQuote = !insideQuote; 
+                } else if (char === ',' && !insideQuote) {
+                    result.push(entry.trim());
+                    entry = '';
+                } else {
+                    entry += char;
+                }
+            }
+            result.push(entry.trim());
+            return result;
+        }
+
+        // Parsing Data CSV mentah dengan pemetaan kolom yang telah direvisi
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const data = [];
+            
+            // Baris 0 adalah Header, data mulai dari Baris 1
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const columns = splitCSVLine(line);
+                // Pastikan panjang kolom mencakup kolom O / indeks 14 (Atribut)
+                if (columns && columns.length >= 15) {
+                    const cleanValue = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+                    
+                    // Pemetaan Kolom Berdasarkan Spesifikasi:
+                    const noReg = cleanValue(columns[1]);       // Kolom B / Kolom 2 (Nomor Pendaftaran)
+                    const nama = cleanValue(columns[2]);        // Kolom C / Kolom 3 (Nama)
+                    const asalSekolah = cleanValue(columns[3]); // Kolom D / Kolom 4 (Asal Sekolah)
+                    const jk = cleanValue(columns[4]);          // Kolom E / Kolom 5 (Jenis Kelamin)
+                    const kelas = cleanValue(columns[5]);       // Kolom F / Kolom 6 (Kelas)
+
+                    // Mengambil data ukuran meter kain dari kolom G sampai M, dan Harga Atribut di kolom O (Indeks 14):
+                    const ukuran = {
+                        'baju-osis': parseSizeValue(cleanValue(columns[6])),        
+                        'rok-celana-biru': parseSizeValue(cleanValue(columns[7])),  
+                        'batik-kotak': parseSizeValue(cleanValue(columns[8])),      
+                        'batik-logo': parseSizeValue(cleanValue(columns[9])),       
+                        'rok-celana-putih': parseSizeValue(cleanValue(columns[10])),
+                        'baju-pramuka': parseSizeValue(cleanValue(columns[11])),    
+                        'rok-celana-pramuka': parseSizeValue(cleanValue(columns[12])),
+                        // Atribut diambil langsung nilainya dari Kolom O / Kolom 15 (Indeks 14)
+                        'atribut': parseSizeValue(cleanValue(columns[14]))
+                    };
+
+                    if (nama && noReg) {
+                        data.push({ noReg, nama, asalSekolah, jk, kelas, ukuran });
+                    }
+                }
+            }
+            dbSiswa = data;
+        }
+
+        // Pencarian Murid (Nama / No Pendaftaran)
+        function searchStudent(keyword) {
+            const dropdown = document.getElementById('search-results-dropdown');
+            const clearBtn = document.getElementById('clear-search-btn');
+
+            if (!keyword.trim() || dbSiswa.length === 0) {
+                dropdown.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                return;
+            }
+
+            clearBtn.classList.remove('hidden');
+            const kw = keyword.toLowerCase();
+
+            // Filter data murid
+            const results = dbSiswa.filter(s => 
+                s.nama.toLowerCase().includes(kw) || 
+                s.noReg.toLowerCase().includes(kw)
+            ).slice(0, 5);
+
+            if (results.length === 0) {
+                dropdown.innerHTML = `<div class="p-3 text-slate-500 text-xs italic text-center">Murid tidak ditemukan</div>`;
+            } else {
+                dropdown.innerHTML = results.map(siswa => `
+                    <div onclick="selectStudent('${siswa.noReg}')" class="p-3 hover:bg-slate-50 border-b border-slate-100 cursor-pointer flex justify-between items-center transition-colors">
+                        <div>
+                            <p class="font-bold text-sm text-slate-800">${siswa.nama}</p>
+                            <p class="text-[10px] text-slate-500 font-semibold">No: ${siswa.noReg} | ${siswa.asalSekolah} (${siswa.kelas})</p>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${siswa.jk.toLowerCase().includes('p') ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}">
+                            ${siswa.jk}
+                        </span>
+                    </div>
+                `).join('');
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        // Sinkronisasi data dari input form ke nota secara real-time
+        function updateStudentDetails() {
+            const nama = document.getElementById('form-nama').value.trim() || '-';
+            const noreg = document.getElementById('form-noreg').value.trim() || '-';
+            const kelas = document.getElementById('form-kelas').value.trim() || '-';
+            const sekolah = document.getElementById('form-sekolah').value.trim() || '-';
+            const genderText = currentGender === 'laki' ? 'Laki-Laki' : 'Perempuan';
+
+            document.getElementById('r-student-name').innerText = `: ${nama}`;
+            document.getElementById('r-student-reg').innerText = `: ${noreg}`;
+            document.getElementById('r-student-class').innerText = `: ${kelas}`;
+            document.getElementById('r-student-school').innerText = `: ${sekolah}`;
+            document.getElementById('r-student-gender').innerText = `: ${genderText}`;
+        }
+
+        // Aksi ketika murid dipilih dari hasil pencarian
+        function selectStudent(noReg) {
+            const siswa = dbSiswa.find(s => s.noReg === noReg);
+            if (!siswa) return;
+
+            selectedStudent = siswa;
+
+            // Masukkan data ke Form Identitas secara otomatis
+            document.getElementById('form-nama').value = siswa.nama;
+            document.getElementById('form-noreg').value = siswa.noReg;
+            document.getElementById('form-kelas').value = siswa.kelas;
+            document.getElementById('form-sekolah').value = siswa.asalSekolah;
+
+            // Set acuan gender tombol
+            const normalizedJK = siswa.jk.toLowerCase();
+            const genderValue = (normalizedJK.includes('perempuan') || normalizedJK === 'p' || normalizedJK.includes('wanita')) ? 'perempuan' : 'laki';
+            
+            currentGender = genderValue;
+            updateGenderUI();
+
+            // Jalankan update sinkronisasi teks ke nota
+            updateStudentDetails();
+
+            // Set ukuran dan checklist item langsung dari database pendaftaran murid
+            dbBahan.forEach(item => {
+                const valueSpreadsheet = siswa.ukuran[item.id];
+                
+                if (item.id === 'atribut') {
+                    // UNTUK ATRIBUT:
+                    // Nilai di spreadsheet (kolom O) adalah nominal rupiah langsung (misal 135000, 150000, dll)
+                    if (valueSpreadsheet > 0) {
+                        selectedItems[item.id] = {
+                            checked: true,
+                            length: 1, // Atribut dihitung 1 set
+                            price: valueSpreadsheet, // Harganya dinamis mengikuti nilai kolom O!
+                            isCustom: true
+                        };
+                    } else {
+                        selectedItems[item.id] = {
+                            checked: false,
+                            length: 0,
+                            price: 150000, // default fallback
+                            isCustom: false
+                        };
+                    }
+                } else {
+                    // UNTUK BAHAN KAIN METERAN:
+                    // Nilai di spreadsheet adalah panjang kain dalam meter (misal 1.25, 1.5)
+                    if (valueSpreadsheet > 0) {
+                        selectedItems[item.id] = {
+                            checked: true,
+                            length: valueSpreadsheet,
+                            price: item.hargaPerM, // Harga kain tetap sesuai dbBahan
+                            isCustom: true 
+                        };
+                    } else {
+                        const defaultLen = currentGender === 'laki' ? item.stdLaki : item.stdPerempuan;
+                        selectedItems[item.id] = {
+                            checked: false,
+                            length: defaultLen,
+                            price: item.hargaPerM,
+                            isCustom: false
+                        };
+                    }
+                }
+            });
+
+            // Sembunyikan hasil dropdown pencarian
+            document.getElementById('search-results-dropdown').classList.add('hidden');
+            renderItems();
+        }
+
+        // Hapus Kolom Pencarian Google Sheets
+        function clearSearch() {
+            document.getElementById('student-search-input').value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            document.getElementById('search-results-dropdown').classList.add('hidden');
+        }
+
+        // Reset Total Form Murid
+        function resetFormSiswa() {
+            selectedStudent = null;
+            document.getElementById('form-nama').value = '';
+            document.getElementById('form-noreg').value = '';
+            document.getElementById('form-kelas').value = '';
+            document.getElementById('form-sekolah').value = '';
+            
+            currentGender = 'laki';
+            updateGenderUI();
+            updateStudentDetails();
+            clearSearch();
+
+            // Kembalikan semua item ke default standar Laki-Laki
+            for (let id in selectedItems) {
+                const itemDb = dbBahan.find(b => b.id === id);
+                selectedItems[id] = {
+                    checked: false,
+                    length: itemDb.stdLaki,
+                    price: itemDb.hargaPerM, // reset harga ke harga awal
+                    isCustom: false
+                };
+            }
+            renderItems();
+        }
 
         // Render Item-item Bahan ke UI
         function renderItems() {
             const container = document.getElementById('items-container');
             container.innerHTML = '';
 
-            dbBahan.forEach((item, index) => {
-                // Tentukan panjang standar berdasarkan gender saat ini
+            dbBahan.forEach((item) => {
                 const defaultLen = currentGender === 'laki' ? item.stdLaki : item.stdPerempuan;
+                const unitLabel = item.unit || 'm';
                 
-                // Set default state jika belum didefinisikan
                 if (selectedItems[item.id] === undefined) {
                     selectedItems[item.id] = {
                         checked: false,
-                        length: defaultLen
+                        length: defaultLen,
+                        price: item.hargaPerM,
+                        isCustom: false
                     };
                 } else {
-                    // Update ukuran mengikuti standar gender jika user tidak mengedit manual
                     if (!selectedItems[item.id].isCustom) {
                         selectedItems[item.id].length = defaultLen;
                     }
+                    if (selectedItems[item.id].price === undefined) {
+                        selectedItems[item.id].price = item.hargaPerM;
+                    }
                 }
 
+                const state = selectedItems[item.id];
                 const card = document.createElement('div');
-                // Beri efek border khusus jika dicentang
-                const isChecked = selectedItems[item.id].checked;
-                card.className = `p-4 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isChecked ? 'border-brand-500 bg-brand-50/20' : 'border-slate-100 hover:bg-slate-50'}`;
+                const isChecked = state.checked;
+                card.className = `p-4 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isChecked ? 'border-brand-500 bg-brand-50/20 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`;
                 
+                // Ubah sublabel harga berdasarkan unit barang (meter atau set)
+                const priceSublabel = unitLabel === 'set' ? 'set' : 'meter';
+
                 card.innerHTML = `
                     <div class="flex items-start space-x-3 flex-1">
                         <div class="pt-1">
@@ -236,23 +618,23 @@
                         </div>
                         <div>
                             <label for="check-${item.id}" class="font-bold text-slate-800 text-sm md:text-base cursor-pointer hover:text-brand-600 transition-colors">${item.nama}</label>
-                            <p class="text-xs text-slate-400 font-semibold">Rp ${formatRupiah(item.hargaPerM)} / meter</p>
+                            <p class="text-xs text-slate-400 font-semibold">Rp ${formatRupiah(state.price)} / ${priceSublabel}</p>
                         </div>
                     </div>
                     
                     <div class="flex items-center space-x-3 self-end md:self-auto">
                         <div class="flex flex-col items-end">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">Ukuran (m)</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Jumlah (${unitLabel})</span>
                             <div class="flex items-center space-x-1 mt-1">
-                                <button onclick="adjustLength('${item.id}', -0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">-</button>
-                                <input type="number" id="len-${item.id}" step="0.05" min="0.1" value="${selectedItems[item.id].length}" oninput="manualLength('${item.id}', this.value)" class="w-16 text-center font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <button onclick="adjustLength('${item.id}', 0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">+</button>
+                                <button onclick="adjustLength('${item.id}', ${unitLabel === 'set' ? -1 : -0.25})" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">-</button>
+                                <input type="number" id="len-${item.id}" step="${unitLabel === 'set' ? '1' : '0.05'}" min="0" value="${state.length}" oninput="manualLength('${item.id}', this.value)" class="w-16 text-center font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold">
+                                <button onclick="adjustLength('${item.id}', ${unitLabel === 'set' ? 1 : 0.25})" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">+</button>
                             </div>
                         </div>
                         <div class="text-right min-w-[90px]">
                             <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
                             <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
-                                Rp ${formatRupiah(Math.round(selectedItems[item.id].length * item.hargaPerM))}
+                                Rp ${formatRupiah(Math.round(state.length * state.price))}
                             </p>
                         </div>
                     </div>
@@ -263,77 +645,79 @@
             calculateTotal();
         }
 
-        // Event ubah Gender
+        // Ganti Gender secara Manual
         function setGender(gender) {
             currentGender = gender;
-            
-            // Update Tampilan tombol
-            const btnLaki = document.getElementById('btn-gender-laki');
-            const btnPerem = document.getElementById('btn-gender-perempuan');
-            
-            if(gender === 'laki') {
-                btnLaki.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
-                btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
-            } else {
-                btnLaki.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
-                btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
-            }
+            updateGenderUI();
+            updateStudentDetails();
 
-            // Reset custom flags karena standar berubah
+            // Reset flag custom jika gender diubah manual (kecuali atribut yang nilainya tetap sesuai data murid/custom)
             for (let id in selectedItems) {
-                selectedItems[id].isCustom = false;
+                if (id !== 'atribut') {
+                    selectedItems[id].isCustom = false;
+                }
             }
 
-            // Render ulang item agar nilai standar baru diterapkan
             renderItems();
         }
 
-        // Centang / hapus centang item
+        // Sinkronisasi tombol gender secara visual
+        function updateGenderUI() {
+            const btnLaki = document.getElementById('btn-gender-laki');
+            const btnPerem = document.getElementById('btn-gender-perempuan');
+            
+            if(currentGender === 'laki') {
+                btnLaki.className = "flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
+                btnPerem.className = "flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
+            } else {
+                btnLaki.className = "flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-all duration-200";
+                btnPerem.className = "flex items-center justify-center space-x-2 py-2 px-4 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
+            }
+        }
+
+        // Toggle centang item
         function toggleItem(id, isChecked) {
             selectedItems[id].checked = isChecked;
             renderItems();
         }
 
-        // Sesuaikan ukuran dengan tombol tambah / kurang
+        // Sesuaikan ukuran dengan tombol tambah/kurang
         function adjustLength(id, amount) {
             let curVal = parseFloat(selectedItems[id].length) || 0;
-            let newVal = Math.max(0.1, curVal + amount);
+            let newVal = Math.max(0, curVal + amount); 
             selectedItems[id].length = newVal;
-            selectedItems[id].isCustom = true; // Tandai bahwa user memodifikasi ukuran secara manual
+            selectedItems[id].isCustom = true; 
             
-            // Centang otomatis jika diubah ukurannya
-            selectedItems[id].checked = true;
-            
+            selectedItems[id].checked = newVal > 0;
             renderItems();
         }
 
-        // Input ukuran manual via keyboard
+        // Input ukuran manual
         function manualLength(id, value) {
             let val = parseFloat(value) || 0;
             selectedItems[id].length = val;
             selectedItems[id].isCustom = true;
             
-            // Centang otomatis
-            if (val > 0) {
-                selectedItems[id].checked = true;
-            }
+            selectedItems[id].checked = val > 0;
             
-            // Kalkulasi subtotal instan untuk baris tersebut
-            const item = dbBahan.find(i => i.id === id);
-            document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(Math.round(val * item.hargaPerM))}`;
+            const state = selectedItems[id];
+            document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(Math.round(val * state.price))}`;
             
             calculateTotal();
         }
 
-        // Pilih Semua atau Reset Semua item
+        // Pilih Semua / Reset
         function selectAll(bool) {
             for (let id in selectedItems) {
                 selectedItems[id].checked = bool;
+                if (bool && selectedItems[id].length === 0) {
+                    selectedItems[id].length = selectedItems[id].unit === 'set' ? 1 : 1.0;
+                }
             }
             renderItems();
         }
 
-        // Kalkulasi Total Finansial
+        // Hitung total belanja & render list kuitansi
         function calculateTotal() {
             let subtotal = 0;
             const receiptItemsList = document.getElementById('receipt-items-list');
@@ -343,18 +727,18 @@
 
             dbBahan.forEach(item => {
                 const state = selectedItems[item.id];
-                if (state && state.checked) {
+                const unitLabel = item.unit || 'm';
+                if (state && state.checked && state.length > 0) {
                     hasItems = true;
-                    const price = Math.round(state.length * item.hargaPerM);
+                    const price = Math.round(state.length * state.price);
                     subtotal += price;
 
-                    // Tambah ke list item receipt
                     const rRow = document.createElement('div');
-                    rRow.className = "flex justify-between text-xs";
+                    rRow.className = "flex justify-between text-xs border-b border-slate-100 pb-2";
                     rRow.innerHTML = `
                         <div>
                             <p class="font-bold text-slate-800">${item.nama}</p>
-                            <p class="text-[10px] text-slate-400 font-semibold">${state.length}m x Rp ${formatRupiah(item.hargaPerM)}</p>
+                            <p class="text-[10px] text-slate-400 font-semibold">${state.length}${unitLabel} x Rp ${formatRupiah(state.price)}</p>
                         </div>
                         <span class="font-bold text-slate-700">Rp ${formatRupiah(price)}</span>
                     `;
@@ -363,11 +747,60 @@
             });
 
             if (!hasItems) {
-                receiptItemsList.innerHTML = '<p class="text-sm text-slate-400 italic py-4 text-center">Belum ada bahan terpilih.</p>';
+                receiptItemsList.innerHTML = '<p class="text-sm text-slate-400 italic py-4 text-center font-medium">Belum ada bahan terpilih.</p>';
             }
 
-            // Update UI Ringkasan Nota (Hanya Total Tagihan)
             document.getElementById('r-total').innerText = `Rp ${formatRupiah(subtotal)}`;
+        }
+
+        // Ekspor Nota Belanja ke Format PDF (Solusi Pasti No-Blank-Data)
+        function downloadPDF() {
+            const originalElement = document.getElementById('receipt-container');
+            const pdfRenderArea = document.getElementById('pdf-render-area');
+            
+            // Bersihkan sisa render sebelumnya
+            pdfRenderArea.innerHTML = '';
+            
+            // Kloning kuitansi
+            const clonedElement = originalElement.cloneNode(true);
+            
+            // Buat kontainer khusus lebar kuitansi A4 agar rasio teks pas
+            clonedElement.style.width = '600px';
+            clonedElement.style.height = 'auto';
+            clonedElement.style.boxShadow = 'none';
+            clonedElement.style.border = 'none';
+            clonedElement.classList.add('bg-white');
+
+            // Masukkan klon ke pembungkus render (height: 1px untuk mengelabui browser agar dimensi terbaca tetapi tidak merusak tampilan utama kasir)
+            pdfRenderArea.appendChild(clonedElement);
+
+            // Dapatkan nama file yang rapi sesuai identitas murid di Form
+            let studentName = document.getElementById('form-nama').value.trim();
+            studentName = studentName ? studentName.replace(/\s+/g, '_') : 'Umum';
+            
+            // Konfigurasi konversi PDF dengan pengaturan resolusi & layout terbaik
+            const opt = {
+                margin:       [12, 12, 12, 12],
+                filename:     `Nota_Bahan_Seragam_${studentName}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { 
+                    scale: 2.5, 
+                    useCORS: true, 
+                    logging: false, 
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Proses rendering PDF
+            html2pdf().set(opt).from(clonedElement).save().then(() => {
+                // Kosongkan kembali area render sementara setelah PDF diunduh
+                pdfRenderArea.innerHTML = '';
+            }).catch((err) => {
+                console.error("PDF Export Error: ", err);
+                pdfRenderArea.innerHTML = '';
+            });
         }
 
         // Fungsi Helper Format Rupiah
