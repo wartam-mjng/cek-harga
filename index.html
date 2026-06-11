@@ -177,15 +177,18 @@
 
     <!-- SCRIPT UTAMA JAVASCRIPT -->
     <script>
-        // Database data sesuai ralat harga terbaru
+        // Database data sesuai ralat harga terbaru + Item Atribut & Kaos baru
         const dbBahan = [
-            { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
-            { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75 },
-            { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1 },
-            { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5 },
-            { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25 }
+            { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
+            { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
+            { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
+            { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75, type: 'meter' },
+            { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
+            { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
+            { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25, type: 'meter' },
+            // Item baru dengan jenis 'global'
+            { id: 'atribut', nama: 'Atribut', hargaLaki: 102000, hargaPerempuan: 102000, type: 'global' },
+            { id: 'kaos', nama: 'Kaos', hargaLaki: 110000, hargaPerempuan: 115000, type: 'global' }
         ];
 
         // State Aplikasi
@@ -207,26 +210,80 @@
             const container = document.getElementById('items-container');
             container.innerHTML = '';
 
-            dbBahan.forEach((item, index) => {
-                // Tentukan panjang standar berdasarkan gender saat ini
-                const defaultLen = currentGender === 'laki' ? item.stdLaki : item.stdPerempuan;
+            dbBahan.forEach((item) => {
+                const isChecked = selectedItems[item.id] !== undefined ? selectedItems[item.id].checked : false;
                 
-                // Set default state jika belum didefinisikan
-                if (selectedItems[item.id] === undefined) {
-                    selectedItems[item.id] = {
-                        checked: false,
-                        length: defaultLen
-                    };
-                } else {
-                    // Update ukuran mengikuti standar gender jika user tidak mengedit manual
-                    if (!selectedItems[item.id].isCustom) {
+                let defaultLen = 0;
+                let priceLabel = '';
+                let subtotalValue = 0;
+                let rightControlHtml = '';
+
+                if (item.type === 'meter') {
+                    // Penanganan Item Berbasis Meteran
+                    defaultLen = currentGender === 'laki' ? item.stdLaki : item.stdPerempuan;
+                    
+                    // Inisialisasi state jika kosong
+                    if (selectedItems[item.id] === undefined) {
+                        selectedItems[item.id] = {
+                            checked: false,
+                            length: defaultLen,
+                            isCustom: false
+                        };
+                    } else if (!selectedItems[item.id].isCustom) {
                         selectedItems[item.id].length = defaultLen;
                     }
+
+                    const currentLength = selectedItems[item.id].length;
+                    subtotalValue = Math.round(currentLength * item.hargaPerM);
+                    priceLabel = `Rp ${formatRupiah(item.hargaPerM)} / meter`;
+
+                    // Control ukuran meteran
+                    rightControlHtml = `
+                        <div class="flex items-center space-x-3 self-end md:self-auto">
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Ukuran (m)</span>
+                                <div class="flex items-center space-x-1 mt-1">
+                                    <button onclick="adjustLength('${item.id}', -0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">-</button>
+                                    <input type="number" id="len-${item.id}" step="0.05" min="0.1" value="${currentLength}" oninput="manualLength('${item.id}', this.value)" class="w-16 text-center font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                    <button onclick="adjustLength('${item.id}', 0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">+</button>
+                                </div>
+                            </div>
+                            <div class="text-right min-w-[90px]">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
+                                <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
+                                    Rp ${formatRupiah(subtotalValue)}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Penanganan Item Global/Paket (Atribut & Kaos)
+                    const activePrice = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
+                    subtotalValue = activePrice;
+
+                    if (selectedItems[item.id] === undefined) {
+                        selectedItems[item.id] = {
+                            checked: false,
+                            length: 1 // default kuantitas item global adalah 1
+                        };
+                    }
+
+                    priceLabel = `Rp ${formatRupiah(activePrice)} / paket`;
+
+                    // Control item global (tanpa meteran, hanya menampilkan subtotal langsung)
+                    rightControlHtml = `
+                        <div class="flex items-center space-x-3 self-end md:self-auto">
+                            <div class="text-right min-w-[90px]">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
+                                <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
+                                    Rp ${formatRupiah(subtotalValue)}
+                                </p>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 const card = document.createElement('div');
-                // Beri efek border khusus jika dicentang
-                const isChecked = selectedItems[item.id].checked;
                 card.className = `p-4 rounded-xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isChecked ? 'border-brand-500 bg-brand-50/20' : 'border-slate-100 hover:bg-slate-50'}`;
                 
                 card.innerHTML = `
@@ -236,26 +293,10 @@
                         </div>
                         <div>
                             <label for="check-${item.id}" class="font-bold text-slate-800 text-sm md:text-base cursor-pointer hover:text-brand-600 transition-colors">${item.nama}</label>
-                            <p class="text-xs text-slate-400 font-semibold">Rp ${formatRupiah(item.hargaPerM)} / meter</p>
+                            <p class="text-xs text-slate-400 font-semibold">${priceLabel}</p>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-3 self-end md:self-auto">
-                        <div class="flex flex-col items-end">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">Ukuran (m)</span>
-                            <div class="flex items-center space-x-1 mt-1">
-                                <button onclick="adjustLength('${item.id}', -0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">-</button>
-                                <input type="number" id="len-${item.id}" step="0.05" min="0.1" value="${selectedItems[item.id].length}" oninput="manualLength('${item.id}', this.value)" class="w-16 text-center font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <button onclick="adjustLength('${item.id}', 0.25)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center justify-center">+</button>
-                            </div>
-                        </div>
-                        <div class="text-right min-w-[90px]">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
-                            <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
-                                Rp ${formatRupiah(Math.round(selectedItems[item.id].length * item.hargaPerM))}
-                            </p>
-                        </div>
-                    </div>
+                    ${rightControlHtml}
                 `;
                 container.appendChild(card);
             });
@@ -263,11 +304,11 @@
             calculateTotal();
         }
 
-        // Event ubah Gender
+        // Event ubah Gender (Laki / Perempuan)
         function setGender(gender) {
             currentGender = gender;
             
-            // Update Tampilan tombol
+            // Update Tampilan tombol Jenis Kelamin
             const btnLaki = document.getElementById('btn-gender-laki');
             const btnPerem = document.getElementById('btn-gender-perempuan');
             
@@ -279,9 +320,11 @@
                 btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
             }
 
-            // Reset custom flags karena standar berubah
+            // Reset custom flags meteran karena standar berubah
             for (let id in selectedItems) {
-                selectedItems[id].isCustom = false;
+                if (selectedItems[id]) {
+                    selectedItems[id].isCustom = false;
+                }
             }
 
             // Render ulang item agar nilai standar baru diterapkan
@@ -290,37 +333,40 @@
 
         // Centang / hapus centang item
         function toggleItem(id, isChecked) {
-            selectedItems[id].checked = isChecked;
+            if (selectedItems[id]) {
+                selectedItems[id].checked = isChecked;
+            }
             renderItems();
         }
 
-        // Sesuaikan ukuran dengan tombol tambah / kurang
+        // Sesuaikan ukuran dengan tombol tambah / kurang (Hanya untuk item meter)
         function adjustLength(id, amount) {
-            let curVal = parseFloat(selectedItems[id].length) || 0;
-            let newVal = Math.max(0.1, curVal + amount);
-            selectedItems[id].length = newVal;
-            selectedItems[id].isCustom = true; // Tandai bahwa user memodifikasi ukuran secara manual
-            
-            // Centang otomatis jika diubah ukurannya
-            selectedItems[id].checked = true;
-            
+            if (selectedItems[id]) {
+                let curVal = parseFloat(selectedItems[id].length) || 0;
+                let newVal = Math.max(0.1, curVal + amount);
+                selectedItems[id].length = newVal;
+                selectedItems[id].isCustom = true; // Tandai bahwa user memodifikasi ukuran secara manual
+                selectedItems[id].checked = true; // Centang otomatis
+            }
             renderItems();
         }
 
-        // Input ukuran manual via keyboard
+        // Input ukuran manual via keyboard (Hanya untuk item meter)
         function manualLength(id, value) {
             let val = parseFloat(value) || 0;
-            selectedItems[id].length = val;
-            selectedItems[id].isCustom = true;
-            
-            // Centang otomatis
-            if (val > 0) {
-                selectedItems[id].checked = true;
+            if (selectedItems[id]) {
+                selectedItems[id].length = val;
+                selectedItems[id].isCustom = true;
+                if (val > 0) {
+                    selectedItems[id].checked = true;
+                }
             }
             
             // Kalkulasi subtotal instan untuk baris tersebut
             const item = dbBahan.find(i => i.id === id);
-            document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(Math.round(val * item.hargaPerM))}`;
+            if (item && item.type === 'meter') {
+                document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(Math.round(val * item.hargaPerM))}`;
+            }
             
             calculateTotal();
         }
@@ -328,7 +374,9 @@
         // Pilih Semua atau Reset Semua item
         function selectAll(bool) {
             for (let id in selectedItems) {
-                selectedItems[id].checked = bool;
+                if (selectedItems[id]) {
+                    selectedItems[id].checked = bool;
+                }
             }
             renderItems();
         }
@@ -345,7 +393,17 @@
                 const state = selectedItems[item.id];
                 if (state && state.checked) {
                     hasItems = true;
-                    const price = Math.round(state.length * item.hargaPerM);
+                    let price = 0;
+                    let descText = '';
+
+                    if (item.type === 'meter') {
+                        price = Math.round(state.length * item.hargaPerM);
+                        descText = `${state.length}m x Rp ${formatRupiah(item.hargaPerM)}`;
+                    } else {
+                        price = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
+                        descText = `1 Paket`;
+                    }
+
                     subtotal += price;
 
                     // Tambah ke list item receipt
@@ -354,7 +412,7 @@
                     rRow.innerHTML = `
                         <div>
                             <p class="font-bold text-slate-800">${item.nama}</p>
-                            <p class="text-[10px] text-slate-400 font-semibold">${state.length}m x Rp ${formatRupiah(item.hargaPerM)}</p>
+                            <p class="text-[10px] text-slate-400 font-semibold">${descText}</p>
                         </div>
                         <span class="font-bold text-slate-700">Rp ${formatRupiah(price)}</span>
                     `;
