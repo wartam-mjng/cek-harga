@@ -177,7 +177,7 @@
 
     <!-- SCRIPT UTAMA JAVASCRIPT -->
     <script>
-        // Database data sesuai ralat harga terbaru + Item Atribut (107.500) & Kaos & Batik Adat baru (ukuran ralat 1.5 & 1.75)
+        // Database data sesuai ralat harga terbaru + Item Atribut & Kaos & Batik Adat baru (ukuran ralat 1.5 & 1.75)
         const dbBahan = [
             { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
             { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
@@ -187,7 +187,7 @@
             { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
             { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
             { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25, type: 'meter' },
-            { id: 'atribut', nama: 'Atribut', hargaLaki: 107500, hargaPerempuan: 107500, type: 'global' }, // Diubah ke 107.500 dan bisa diedit
+            { id: 'atribut', nama: 'Atribut', hargaLaki: 107500, hargaPerempuan: 107500, type: 'global_atribut' }, // Khusus atribut dengan dual preset
             { id: 'kaos', nama: 'Kaos', hargaLaki: 110000, hargaPerempuan: 115000, type: 'global' }
         ];
 
@@ -256,8 +256,51 @@
                             </div>
                         </div>
                     `;
+                } else if (item.type === 'global_atribut') {
+                    // Penanganan Khusus ATRIBUT dengan dua pilihan default (60.000 / 107.500) yang bisa diedit
+                    const defaultPrice = 107500; // default awal ke 107.500
+
+                    if (selectedItems[item.id] === undefined) {
+                        selectedItems[item.id] = {
+                            checked: false,
+                            price: defaultPrice,
+                            isCustomPrice: false
+                        };
+                    } else if (!selectedItems[item.id].isCustomPrice) {
+                        selectedItems[item.id].price = defaultPrice;
+                    }
+
+                    const activePrice = selectedItems[item.id].price;
+                    subtotalValue = activePrice;
+                    priceLabel = `Paket Atribut (Pilih Paket atau Edit Bebas)`;
+
+                    // Render control Atribut dengan 2 tombol pilihan + input manual
+                    rightControlHtml = `
+                        <div class="flex flex-col md:flex-row items-end md:items-center gap-4 self-end md:self-auto">
+                            <!-- Tombol Pilihan Cepat -->
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Pilih Paket</span>
+                                <div class="flex space-x-1 mt-1">
+                                    <button onclick="setAtributPreset(60000)" class="px-2.5 py-1 text-xs font-bold rounded-lg border transition ${activePrice === 60000 ? 'bg-brand-600 text-white border-brand-600' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">60K</button>
+                                    <button onclick="setAtributPreset(107500)" class="px-2.5 py-1 text-xs font-bold rounded-lg border transition ${activePrice === 107500 ? 'bg-brand-600 text-white border-brand-600' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">107.5K</button>
+                                </div>
+                            </div>
+                            <!-- Input Harga Manual -->
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Harga Atribut (Rp)</span>
+                                <input type="number" id="price-${item.id}" value="${activePrice}" oninput="manualPrice('${item.id}', this.value)" class="w-28 text-right font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 mt-1 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <!-- Subtotal -->
+                            <div class="text-right min-w-[90px]">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
+                                <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
+                                    Rp ${formatRupiah(subtotalValue)}
+                                </p>
+                            </div>
+                        </div>
+                    `;
                 } else {
-                    // Penanganan Item Global/Paket (Atribut & Kaos) yang harganya bisa diedit
+                    // Penanganan Item Global Umum (seperti Kaos) yang harganya bisa diedit
                     const defaultPrice = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
 
                     if (selectedItems[item.id] === undefined) {
@@ -274,7 +317,6 @@
                     subtotalValue = activePrice;
                     priceLabel = `Harga Paket (Bisa diedit)`;
 
-                    // Control item global (dengan input harga yang bisa diedit)
                     rightControlHtml = `
                         <div class="flex items-center space-x-3 self-end md:self-auto">
                             <div class="flex flex-col items-end">
@@ -312,6 +354,16 @@
             });
 
             calculateTotal();
+        }
+
+        // Fungsi memilih preset cepat untuk Atribut (60k / 107.5k)
+        function setAtributPreset(price) {
+            if (selectedItems['atribut']) {
+                selectedItems['atribut'].price = price;
+                selectedItems['atribut'].isCustomPrice = true;
+                selectedItems['atribut'].checked = true; // Otomatis centang item
+            }
+            renderItems();
         }
 
         // Event ubah Gender (Laki / Perempuan)
