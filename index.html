@@ -177,17 +177,17 @@
 
     <!-- SCRIPT UTAMA JAVASCRIPT -->
     <script>
-        // Database data sesuai ralat harga terbaru + Item Atribut & Kaos & Batik Adat baru (ukuran ralat 1.5 & 1.75)
+        // Database data sesuai ralat harga terbaru + Item Atribut (107.500) & Kaos & Batik Adat baru (ukuran ralat 1.5 & 1.75)
         const dbBahan = [
             { id: 'baju-osis', nama: 'Baju OSIS', hargaPerM: 85000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
             { id: 'rok-celana-biru', nama: 'Rok/Celana Biru', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
             { id: 'batik-kotak', nama: 'Batik Kotak', hargaPerM: 101000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
             { id: 'batik-logo', nama: 'Batik Logo', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75, type: 'meter' },
-            { id: 'batik-adat', nama: 'Batik Adat', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75, type: 'meter' }, // Ukuran diperbarui ke Laki-laki: 1.5m, Perempuan: 1.75m
+            { id: 'batik-adat', nama: 'Batik Adat', hargaPerM: 101000, stdLaki: 1.5, stdPerempuan: 1.75, type: 'meter' }, 
             { id: 'rok-celana-putih', nama: 'Rok/Celana Putih', hargaPerM: 96000, stdLaki: 1.1, stdPerempuan: 1.1, type: 'meter' },
             { id: 'baju-pramuka', nama: 'Baju Pramuka', hargaPerM: 86000, stdLaki: 1.25, stdPerempuan: 1.5, type: 'meter' },
             { id: 'rok-celana-pramuka', nama: 'Rok/Celana Pramuka', hargaPerM: 96000, stdLaki: 1.25, stdPerempuan: 1.25, type: 'meter' },
-            { id: 'atribut', nama: 'Atribut', hargaLaki: 107500, hargaPerempuan: 107500, type: 'global' },
+            { id: 'atribut', nama: 'Atribut', hargaLaki: 107500, hargaPerempuan: 107500, type: 'global' }, // Diubah ke 107.500 dan bisa diedit
             { id: 'kaos', nama: 'Kaos', hargaLaki: 110000, hargaPerempuan: 115000, type: 'global' }
         ];
 
@@ -257,22 +257,32 @@
                         </div>
                     `;
                 } else {
-                    // Penanganan Item Global/Paket (Atribut & Kaos)
-                    const activePrice = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
-                    subtotalValue = activePrice;
+                    // Penanganan Item Global/Paket (Atribut & Kaos) yang harganya bisa diedit
+                    const defaultPrice = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
 
                     if (selectedItems[item.id] === undefined) {
                         selectedItems[item.id] = {
                             checked: false,
-                            length: 1 // default kuantitas item global adalah 1
+                            price: defaultPrice,
+                            isCustomPrice: false
                         };
+                    } else if (!selectedItems[item.id].isCustomPrice) {
+                        selectedItems[item.id].price = defaultPrice;
                     }
 
-                    priceLabel = `Rp ${formatRupiah(activePrice)} / paket`;
+                    const activePrice = selectedItems[item.id].price;
+                    subtotalValue = activePrice;
+                    priceLabel = `Harga Paket (Bisa diedit)`;
 
-                    // Control item global (tanpa meteran, hanya menampilkan subtotal langsung)
+                    // Control item global (dengan input harga yang bisa diedit)
                     rightControlHtml = `
                         <div class="flex items-center space-x-3 self-end md:self-auto">
+                            <div class="flex flex-col items-end">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Harga Satuan (Rp)</span>
+                                <div class="flex items-center space-x-1 mt-1">
+                                    <input type="number" id="price-${item.id}" value="${activePrice}" oninput="manualPrice('${item.id}', this.value)" class="w-28 text-right font-bold text-sm text-slate-700 bg-white border border-slate-200 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                </div>
+                            </div>
                             <div class="text-right min-w-[90px]">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
                                 <p class="font-extrabold text-slate-800 text-sm mt-1" id="subtotal-${item.id}">
@@ -320,10 +330,11 @@
                 btnPerem.className = "flex items-center justify-center space-x-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50/50 text-brand-700 font-bold transition-all duration-200";
             }
 
-            // Reset custom flags meteran karena standar berubah
+            // Reset custom flags meteran & harga karena standar berubah
             for (let id in selectedItems) {
                 if (selectedItems[id]) {
                     selectedItems[id].isCustom = false;
+                    selectedItems[id].isCustomPrice = false;
                 }
             }
 
@@ -371,6 +382,24 @@
             calculateTotal();
         }
 
+        // Input harga manual via keyboard (Hanya untuk item global seperti Atribut & Kaos)
+        function manualPrice(id, value) {
+            let val = parseInt(value) || 0;
+            if (selectedItems[id]) {
+                selectedItems[id].price = val;
+                selectedItems[id].isCustomPrice = true;
+                selectedItems[id].checked = true; // Centang otomatis saat harga diubah
+
+                // Update tampilan checkbox di layar agar sinkron tanpa render ulang instan (mencegah kehilangan fokus input)
+                const checkbox = document.getElementById(`check-${id}`);
+                if (checkbox) checkbox.checked = true;
+            }
+            
+            // Kalkulasi subtotal instan untuk baris tersebut
+            document.getElementById(`subtotal-${id}`).innerText = `Rp ${formatRupiah(val)}`;
+            calculateTotal();
+        }
+
         // Pilih Semua atau Reset Semua item
         function selectAll(bool) {
             for (let id in selectedItems) {
@@ -400,7 +429,7 @@
                         price = Math.round(state.length * item.hargaPerM);
                         descText = `${state.length}m x Rp ${formatRupiah(item.hargaPerM)}`;
                     } else {
-                        price = currentGender === 'laki' ? item.hargaLaki : item.hargaPerempuan;
+                        price = state.price;
                         descText = `1 Paket`;
                     }
 
